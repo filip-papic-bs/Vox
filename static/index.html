@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Vox Machina</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <div class="title">
+      <h1>Vox Machina</h1>
+      <p class="subtitle">16 distinct AI players. Same video. Honest, in-character feedback across 12 dimensions.</p>
+    </div>
+  </header>
+
+  <main>
+    <section id="upload-section" class="card">
+      <h2>Run a new evaluation</h2>
+      <p class="hint">Drop a game video. The model extracts stats from the video itself, then 16 personas score it across 12 dimensions.</p>
+      <form id="upload-form">
+        <label class="field">
+          <span>Game video (mp4, mov, webm)</span>
+          <input type="file" name="video" accept="video/*">
+        </label>
+
+        <label class="field inline">
+          <span>Backend</span>
+          <select name="backend" id="backend-select">
+            <option value="openrouter">openrouter (any provider — single key, many models)</option>
+            <option value="gemini">gemini (direct, Gemini Flash)</option>
+            <option value="mock">mock (no API key, canned stats)</option>
+          </select>
+        </label>
+
+        <label class="field" id="api-key-field" style="display:none">
+          <span id="api-key-label">Gemini API key (saved in this browser only)</span>
+          <input type="password" name="api_key" id="api-key-input" autocomplete="off" placeholder="AIza…">
+        </label>
+
+        <label class="field inline" id="model-field" style="display:none">
+          <span id="model-label">Model</span>
+          <select name="model" id="model-select"></select>
+          <button type="button" id="refresh-models" class="btn-secondary" title="Refresh list from your API key">↻</button>
+        </label>
+        <div id="model-note" class="hint" style="display:none"></div>
+
+        <label class="field inline" id="frame-step-field" style="display:none">
+          <span>Frame step</span>
+          <input type="number" name="frame_step" id="frame-step-input" min="1" step="1" value="30">
+        </label>
+
+        <label class="field inline" id="max-frames-field" style="display:none">
+          <span>Max frames</span>
+          <input type="number" name="max_frames" id="max-frames-input" min="0" step="1" value="48">
+        </label>
+
+        <label class="field inline checkbox-field">
+          <input type="checkbox" name="export_obsidian" id="export-obsidian-input" value="1">
+          <span>Export to Obsidian vault when done <span class="hint-inline">(off by default — enable to rebuild the cross-linked notes for graph view)</span></span>
+        </label>
+
+        <div class="actions">
+          <button type="submit" id="run-btn">Run evaluation</button>
+          <span id="status"></span>
+        </div>
+      </form>
+    </section>
+
+    <section id="requests-section" class="card" style="display:none">
+      <div class="results-header">
+        <h2>Live request feed</h2>
+        <span id="requests-summary"></span>
+      </div>
+      <div id="requests-stage" class="hint" style="display:none"></div>
+      <div id="requests-list" class="requests-list"></div>
+      <button type="button" id="requests-show-all" class="btn-secondary" style="display:none">
+        Show all (<span id="requests-hidden-count">0</span>)
+      </button>
+    </section>
+
+    <section id="history-section" class="card">
+      <h2>Past evaluations</h2>
+      <div id="history-list">Loading…</div>
+    </section>
+
+    <section id="obsidian-section" class="card">
+      <h2>Obsidian vault <span class="badge">graph view</span></h2>
+      <p class="hint">
+        Every evaluation auto-exports as a folder of cross-linked markdown notes you can
+        open in Obsidian. Open the folder as a vault, press <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>G</kbd>,
+        and the personas / dimensions / themes / evaluations render as a connected web.
+      </p>
+      <div class="obsidian-row">
+        <code id="obsidian-path" class="path">…</code>
+        <button type="button" id="obsidian-copy" class="btn-secondary" title="Copy path">⧉</button>
+        <button type="button" id="obsidian-refresh" class="btn-secondary">Re-export now</button>
+      </div>
+      <div id="obsidian-note" class="hint" style="display:none"></div>
+    </section>
+
+    <section id="results-section" class="card hidden">
+      <div class="results-header">
+        <h2 id="results-title">Results</h2>
+        <span id="results-meta"></span>
+      </div>
+      <div id="stats-panel" class="stats-panel"></div>
+      <div id="persona-grid" class="grid"></div>
+    </section>
+  </main>
+
+  <aside id="detail-panel" class="detail-panel hidden">
+    <button class="close-btn" id="detail-close">✕</button>
+    <div id="detail-body"></div>
+  </aside>
+  <div id="detail-backdrop" class="hidden"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

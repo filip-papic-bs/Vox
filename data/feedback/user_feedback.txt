@@ -1,0 +1,338 @@
+User FeedBack:
+Player 1:
+Animation is smooth. Well done guys
+Sometimes the reels are not rolling in left to right order, maybe by design idk - felt unexpected
+After three matching symbols on the first three reels and none on the fourth, I still got a teaser wait on the fifth but I couldn't have won anything more than what I got on the first three, seems redundant
+what came first, where and what was chosen to be delayed and why? sorry I dont understand :smile: Unless you mean the big win "possibility" is not triggered by an increased possibility of win based on the symbols that have appeared so far? Because if this doesn't happen in succession, you get an indication that there is a big win potentially coming as soon as a reel is skipped. Again maybe by design but it felt like a bug to me.
+
+Player 2:
+Why do you display win animation for small wins of under 1x?
+That's a waste of playtime for me as a player and you as a business
+While on autoplay, I hit the bonus round and it started immediately - not a great UX
+Autoplay or not, usually the bonus round/feature is the single most interesting/important event in the game
+So you'd better disable auto-launch for the bonus round/s and use the momentum to shoot a bonus-dedicated modal where you quickly present the bonus feature and use CTA e.g. "Start Bonus", "Play Bonus" so it's under my control when to play it
+Can you make the bonus feature sound a bit more exciting? Right now it doesn't say much other than 'bonus spins'...
+Tease animation on reel 2 and 3 are weird and counterintuitive for most casual slot players
+It's okay if you use teaser animation
+on reel 4 - when 3rd scatter is needed
+on reel 5 -  when 5OAK is possible
+
+Player 3:
+Looks and sounds good.  Very Egyptian feeling.
+
+The main thing that stood out to me was also the "big win" animation on too many wins. If I get 0.5x I dont need an animation. Although I do like that is shows as a multiple as well as a monetary value so you dont need to be doing quick maths.
+
+The free spins system is maybe a bit complicated too with the different combinations of colours equating to different numbers of spins. I think you should be able to know whats happening without needing to refer to the rules and with 9 different combinations, I dont think people will remember.
+
+The scatters landing and giving a reveal opening the wins is fun. Maybe we just have less combos or show a number that is added together or something?
+
+Also, they only land on 2/3/4 right? Might need making clear in the rules.  Because I had anticipation spins where reel 1, 2, 3 and 5 have stopped and 4 keeps spinning and it felt a bit jarring. Usually the last reel wouldnt stop before the anticipation is done.
+
+Player 4:
+I know one game studio has distinct animation for regular win, big win and mega win.
+
+CONCLUSION
+Pharaoh Slot – Consolidated Player Feedback & Recommended Changes
+Highest Priority Issues (mentioned by 2+ players)
+1. Win animations trigger too often / on very small wins
+Mentioned by: Player 2, Player 3, partially Player 4
+Problem
+Players feel that:
+    • animations for wins under 1x are unnecessary
+    • they slow down gameplay
+    • they reduce excitement because everything feels like a “big event”
+    • current system lacks clear distinction between normal win vs big win
+Strong Recommendation
+Create 3 win tiers with different pacing and intensity:
+Win Type	Suggested Trigger	Animation
+Regular Win	< 2x	Minimal / instant
+Big Win	10x+	Enhanced animation
+Mega Win	25x+ or 50x+	Full cinematic
+Suggested Changes
+    • Remove celebratory animations for wins under 1x
+    • For 1x–2x:
+        ◦ quick highlight only
+        ◦ no interruption
+    • Add stronger differentiation:
+        ◦ sound
+        ◦ screen shake
+        ◦ lighting
+        ◦ pacing
+    • Keep autoplay speed high during small wins
+Why This Matters
+This directly affects:
+    • retention
+    • autoplay flow
+    • perceived game speed
+    • emotional scaling of rewards
+Right now players feel the game “overreacts” to small payouts.
+
+⸻
+
+2. Anticipation / teaser spins feel incorrect or confusing
+Mentioned by: Player 1, Player 2, Player 3
+This is the biggest UX issue in the feedback.
+
+⸻
+
+Core Problem
+Players feel anticipation is:
+    • triggered in situations where no meaningful outcome is possible
+    • happening on unusual reels
+    • breaking expected slot behavior
+    • feeling bugged instead of exciting
+
+⸻
+
+Specific Issues Identified
+A) Reel 5 anticipation after dead Reel 4
+Mentioned by: Player 1
+Example:
+    • Reels 1–3 match
+    • Reel 4 misses
+    • Reel 5 still delays/spins dramatically
+Player expectation:
+“Nothing meaningful can happen anymore.”
+So the anticipation feels fake/manipulative.
+
+⸻
+
+B) Reel 2 and 3 teaser animations feel wrong
+Mentioned by: Player 2
+Most slot players expect anticipation:
+    • on Reel 4 when Scatter #3 is possible
+    • on Reel 5 when 5OAK is possible
+Early-reel anticipation feels unnatural.
+
+⸻
+
+C) Reel order / stopping logic feels broken
+Mentioned by: Player 1 and Player 3
+Example:
+    • Reel 5 stops
+    • Reel 4 continues spinning
+This breaks standard slot rhythm.
+Players interpreted it as:
+    • a bug
+    • synchronization issue
+    • “fake anticipation”
+
+⸻
+
+Recommended Anticipation Rules
+Recommended Standardization
+Scatter Anticipation
+ONLY trigger when:
+    • 2 scatters are already visible
+    • Reel 4 can deliver the 3rd scatter
+Optional:
+    • Reel 5 only if 4-scatter or 5-scatter rewards exist
+
+⸻
+
+Line Win Anticipation
+ONLY trigger on Reel 5 when:
+    • 4 matching symbols already exist
+    • 5OAK is possible
+
+⸻
+
+Never Trigger Anticipation When:
+    • payout outcome is already mathematically capped
+    • no upgrade to win is possible
+    • Reel 4 already killed the combination
+This was the biggest “feels fake” criticism.
+
+⸻
+
+Reel Stop Order Recommendation
+Keep strict:
+1 → 2 → 3 → 4 → 5
+Avoid:
+    • skipped reel timing
+    • delayed middle reels
+    • Reel 5 stopping before Reel 4
+Unless intentionally building a very stylized slot identity.
+
+⸻
+
+3. Bonus round UX needs improvement
+Mentioned by: Player 2, partially Player 3
+
+⸻
+
+Problem
+Autoplay immediately launches bonus.
+Players want:
+    • a moment of anticipation
+    • a sense of importance
+    • control before entering feature
+Right now the transition feels abrupt.
+
+⸻
+
+Recommended Solution
+Add Bonus Intro Modal
+Example flow:
+    1 Bonus triggered
+    2 Autoplay pauses
+    3 Dedicated transition screen appears
+    4 Show:
+        ◦ Free Spins awarded
+        ◦ Feature explanation
+        ◦ Multiplier mechanic
+    5 CTA button:
+        ◦ “START BONUS”
+        ◦ “PLAY FEATURE”
+This creates:
+    • excitement
+    • pacing
+    • emotional buildup
+
+⸻
+
+Audio Feedback Problem
+Current bonus sound:
+    • too generic
+    • not memorable
+    • lacks “reward energy”
+Recommendation
+Add:
+    • rising Egyptian orchestral hit
+    • stronger bass impact
+    • coin/chime layering
+    • vocal element (“FREE SPINS!”)
+This is especially important for streamers/content creators.
+
+⸻
+
+4. Free Spins system may be too complicated
+Mentioned by: Player 3
+
+⸻
+
+Problem
+Players struggle remembering:
+    • multiple color combinations
+    • different spin values
+    • 9 possible outcomes
+The mechanic may be:
+    • technically interesting
+    • but cognitively overloaded
+
+⸻
+
+Risk
+If players must:
+    • check rules often
+    • mentally decode outcomes
+Then feature excitement drops.
+
+⸻
+
+Suggested Simplifications
+Option A — Reduce combinations
+Reduce from:
+    • 9 combinations
+to:
+    • 3–4 meaningful categories
+Example:
+    • Bronze → 8 spins
+    • Gold → 12 spins
+    • Pharaoh → 20 spins
+
+⸻
+
+Option B — Additive System
+Instead of combinations:
+    • each symbol adds spins
+Example:
+    • Blue = +2
+    • Red = +4
+    • Gold = +6
+Total shown visually.
+This is easier to understand instantly.
+
+⸻
+
+Option C — Stronger UI Communication
+If keeping current system:
+    • display awarded spins immediately
+    • visually sum them
+    • explain via animation
+    • use large numbers/colors
+
+⸻
+
+5. Positive Feedback (keep these)
+Visuals & Theme
+Mentioned by: Player 1, Player 3
+Strong positives:
+    • smooth animation
+    • strong Egyptian atmosphere
+    • audio/theme consistency
+These are clearly working well.
+
+⸻
+
+Scatter Reveal Mechanic
+Mentioned by: Player 3
+The reveal/opening effect for scatters was specifically praised.
+Recommendation:
+    • keep it
+    • polish it further
+    • use it as signature identity element
+
+⸻
+
+Win Displaying as Multiplier + Currency
+Mentioned by: Player 3
+Very positive UX feedback.
+Players liked:
+    • seeing x-value
+    • not needing mental math
+Definitely keep this.
+
+⸻
+
+Overall Strategic Conclusion
+Current State
+The game appears:
+    • visually polished
+    • technically solid
+    • thematically successful
+But:
+    • anticipation logic
+    • pacing
+    • reward escalation hierarchy
+need refinement.
+
+⸻
+
+Biggest Risk Areas
+1. Fake/Overused anticipation
+This can quickly damage:
+    • trust
+    • perceived fairness
+    • long-session enjoyment
+Experienced slot players are extremely sensitive to this.
+
+⸻
+
+2. Over-celebrating small wins
+This reduces:
+    • excitement scaling
+    • gameplay flow
+    • emotional impact of actual big wins
+
+⸻
+
+Highest ROI Improvements
+If you only change 3 things:
+1.
+Fix anticipation logic
+2.
+Reduce animations for small wins
+3.
+Add proper bonus intro flow + audio
+These three changes alone would probably improve perceived quality significantly.
