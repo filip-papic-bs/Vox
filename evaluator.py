@@ -26,7 +26,6 @@ from llm_backend import (
     EvaluationRequest,
     EventSink,
     LLMBackend,
-    MockBackend,
     _normalize_scores,
     _normalize_stats,
 )
@@ -51,8 +50,8 @@ DEFAULT_MAX_FRAMES: int = 50
 
 # Bound on concurrent persona workers. Each persona still runs its 3 runs
 # sequentially, so total in-flight calls ≤ MAX_PARALLEL. Default 8 is
-# comfortably under typical free-tier RPM limits (Gemini ~15 RPM, OpenRouter
-# varies by model); the retry-on-429 path in each backend absorbs short bursts.
+# comfortably under typical free-tier RPM limits (OpenRouter varies by model);
+# the retry-on-429 path in the backend absorbs short bursts.
 DEFAULT_MAX_PARALLEL = 8
 
 
@@ -198,9 +197,6 @@ def evaluate_all(
     `event_sink` — optional callback that receives lifecycle events for the
         live UI feed: stage transitions (frames/stats/personas/done) plus
         per-call events from the backend (started/retrying/succeeded/failed).
-
-    Mock backend doesn't need frames, so we skip ffmpeg when it's selected.
-    Mock also has no rate limit, so we let it run with high parallelism.
     """
     started = time.time()
 
@@ -220,8 +216,7 @@ def evaluate_all(
 
     try:
         frames: list[bytes] = []
-        is_mock = isinstance(backend, MockBackend)
-        if video_path and not is_mock:
+        if video_path:
             env_step = os.environ.get("FRAME_STEP")
             if env_step:
                 try:
@@ -272,8 +267,7 @@ def evaluate_all(
             except ValueError:
                 pass
 
-        # Mock is in-process and instant — no point spinning up threads.
-        workers = 1 if is_mock else min(max_parallel, len(personas))
+        workers = min(max_parallel, len(personas))
         print(
             f"[evaluator] running {len(personas)} personas × {runs} runs "
             f"({workers} parallel workers, backend={backend.name})",

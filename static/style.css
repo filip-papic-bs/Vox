@@ -45,10 +45,6 @@ main {
 .field > span { font-size: 12px; color: var(--muted); }
 .field.inline { flex-direction: row; align-items: center; gap: 12px; }
 .field.inline > span { width: 80px; }
-/* Checkbox field: let the label text take its natural width since the input
-   is narrower than the dropdowns/text inputs above. */
-.field.checkbox-field > span { width: auto; flex: 1; }
-.field.checkbox-field > input[type="checkbox"] { width: auto; }
 
 input[type="file"], textarea, select {
   background: var(--panel-2);
@@ -81,50 +77,6 @@ button.btn-secondary {
   font-size: 14px;
 }
 button.btn-secondary:hover { border-color: var(--accent); }
-
-.badge {
-  display: inline-block;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 2px 8px;
-  margin-left: 8px;
-  vertical-align: middle;
-  color: var(--muted);
-}
-
-.obsidian-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-top: 10px;
-}
-.obsidian-row .path {
-  flex: 1;
-  min-width: 260px;
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 7px 10px;
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 12px;
-  color: var(--muted);
-  overflow-x: auto;
-  white-space: nowrap;
-}
-kbd {
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 1px 6px;
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 11px;
-  color: var(--text);
-}
 
 .actions { display: flex; align-items: center; gap: 14px; }
 #status { color: var(--muted); font-size: 13px; }

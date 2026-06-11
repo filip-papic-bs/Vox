@@ -44,20 +44,13 @@ const DIM_LABEL = {
   clarity: "clarity",
 };
 
-// Per-provider key/model storage so switching backends in the UI doesn't
-// trample what you previously typed in the other one.
-const GEMINI_KEY_STORAGE = "personaEval.geminiApiKey";
-const GEMINI_MODEL_STORAGE = "personaEval.geminiModel";
-const GEMINI_LIST_STORAGE = "personaEval.geminiModelList";
 const OPENROUTER_KEY_STORAGE = "personaEval.openrouterApiKey";
 const OPENROUTER_MODEL_STORAGE = "personaEval.openrouterModel";
 const OPENROUTER_LIST_STORAGE = "personaEval.openrouterModelList";
 const FRAME_STEP_STORAGE = "personaEval.frameStep";
 const MAX_FRAMES_STORAGE = "personaEval.maxFrames";
-const EXPORT_OBSIDIAN_STORAGE = "personaEval.exportObsidian";
 
 // Server-side defaults populated from /api/models on load.
-let GEMINI_MODELS_LIST = ["gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3-flash"];
 let OPENROUTER_MODELS_LIST = [
   "google/gemini-2.5-flash",
   "google/gemini-2.5-flash-lite",
@@ -68,39 +61,21 @@ let OPENROUTER_MODELS_LIST = [
   "mistralai/pixtral-large-2411",
 ];
 
-function currentBackend() {
-  return document.getElementById("backend-select").value;
-}
-
-function isVideoBackend(name) {
-  // Backends that need an API key for the persona-evaluation calls.
-  return name === "gemini" || name === "openrouter";
-}
-
 document.addEventListener("DOMContentLoaded", async () => {
   await loadModels();
-  syncBackendUI();
-  document.getElementById("backend-select").addEventListener("change", syncBackendUI);
+  syncFormUI();
   document.getElementById("model-select").addEventListener("change", (e) => {
-    const key = currentBackend() === "openrouter" ? OPENROUTER_MODEL_STORAGE : GEMINI_MODEL_STORAGE;
-    localStorage.setItem(key, e.target.value);
+    localStorage.setItem(OPENROUTER_MODEL_STORAGE, e.target.value);
     document.getElementById("model-note").style.display = "none";
   });
   document.getElementById("api-key-input").addEventListener("input", (e) => {
-    const key = currentBackend() === "openrouter" ? OPENROUTER_KEY_STORAGE : GEMINI_KEY_STORAGE;
-    localStorage.setItem(key, e.target.value);
+    localStorage.setItem(OPENROUTER_KEY_STORAGE, e.target.value);
   });
   document.getElementById("frame-step-input").addEventListener("input", (e) => {
     localStorage.setItem(FRAME_STEP_STORAGE, e.target.value);
   });
   document.getElementById("max-frames-input").addEventListener("input", (e) => {
     localStorage.setItem(MAX_FRAMES_STORAGE, e.target.value);
-  });
-  // Restore + persist the Obsidian-export choice (off unless user opts in).
-  const obsidianCheckbox = document.getElementById("export-obsidian-input");
-  obsidianCheckbox.checked = localStorage.getItem(EXPORT_OBSIDIAN_STORAGE) === "1";
-  obsidianCheckbox.addEventListener("change", (e) => {
-    localStorage.setItem(EXPORT_OBSIDIAN_STORAGE, e.target.checked ? "1" : "0");
   });
   document.getElementById("refresh-models").addEventListener("click", refreshModelsFromApi);
   document.getElementById("requests-show-all").addEventListener("click", () => {
@@ -109,10 +84,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   loadHistory();
-  loadObsidianStatus();
   document.getElementById("upload-form").addEventListener("submit", onSubmit);
-  document.getElementById("obsidian-refresh").addEventListener("click", reExportObsidian);
-  document.getElementById("obsidian-copy").addEventListener("click", copyObsidianPath);
   document.getElementById("detail-close").addEventListener("click", closeDetail);
   document.getElementById("detail-backdrop").addEventListener("click", closeDetail);
 
@@ -123,14 +95,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function loadModels() {
-  // Server defaults for both providers.
+  // Server defaults.
   try {
     const res = await fetch("/api/models");
     if (res.ok) {
       const data = await res.json();
-      if (Array.isArray(data.gemini_models) && data.gemini_models.length) {
-        GEMINI_MODELS_LIST = data.gemini_models;
-      }
       if (Array.isArray(data.openrouter_models) && data.openrouter_models.length) {
         OPENROUTER_MODELS_LIST = data.openrouter_models;
       }
@@ -150,14 +119,7 @@ async function loadModels() {
     }
   } catch (_) { /* ignore — static fallback already set */ }
 
-  // Cached lists (from a previous explicit refresh) override the live catalog.
-  try {
-    const cached = localStorage.getItem(GEMINI_LIST_STORAGE);
-    if (cached) {
-      const arr = JSON.parse(cached);
-      if (Array.isArray(arr) && arr.length) GEMINI_MODELS_LIST = arr;
-    }
-  } catch (_) { /* ignore */ }
+  // Cached list (from a previous explicit refresh) overrides the live catalog.
   try {
     const cached = localStorage.getItem(OPENROUTER_LIST_STORAGE);
     if (cached) {
@@ -187,130 +149,32 @@ function populateModelSelect(selectEl, models, savedValue) {
 }
 
 async function refreshModelsFromApi() {
-  const backend = currentBackend();
-  const key = document.getElementById("api-key-input").value.trim();
   const note = document.getElementById("model-note");
   const btn = document.getElementById("refresh-models");
-  const providerLabel = backend === "openrouter" ? "OpenRouter" : "Gemini";
-  if (!key) {
-    note.textContent = `Enter your ${providerLabel} API key first.`;
-    note.style.display = "";
-    return;
-  }
-  // Save under the right provider's key slot.
-  localStorage.setItem(backend === "openrouter" ? OPENROUTER_KEY_STORAGE : GEMINI_KEY_STORAGE, key);
 
-  if (backend === "openrouter") {
-    // Fetch the live OpenRouter model catalog (no key needed — public API).
-    btn.disabled = true;
-    note.textContent = "Fetching live OpenRouter vision models…";
-    note.style.display = "";
-    try {
-      const res = await fetch("/api/openrouter/models");
-      const data = await res.json();
-      if (!Array.isArray(data.models) || !data.models.length) {
-        note.textContent = "Couldn't fetch OpenRouter catalog — using static list. " + (data.error || "");
-        return;
-      }
-      OPENROUTER_MODELS_LIST = data.models;
-      localStorage.setItem(OPENROUTER_LIST_STORAGE, JSON.stringify(data.models));
-      syncBackendUI();
-      note.textContent = `Loaded ${data.models.length} vision-capable models from OpenRouter (${data.source || "live"}).`;
-    } catch (e) {
-      note.textContent = "Failed to fetch OpenRouter catalog: " + e.message;
-    } finally {
-      btn.disabled = false;
-    }
-    return;
-  }
-
+  // Fetch the live OpenRouter model catalog (no key needed — public API).
   btn.disabled = true;
-  note.textContent = "Fetching available models…";
+  note.textContent = "Fetching live OpenRouter vision models…";
   note.style.display = "";
   try {
-    const fd = new FormData();
-    fd.append("api_key", key);
-    const res = await fetch("/api/list-models", { method: "POST", body: fd });
+    const res = await fetch("/api/openrouter/models");
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || res.statusText);
-    if (!data.gemini_models || !data.gemini_models.length) {
-      note.textContent = "No usable Gemini models found for this key.";
+    if (!Array.isArray(data.models) || !data.models.length) {
+      note.textContent = "Couldn't fetch OpenRouter catalog — using static list. " + (data.error || "");
       return;
     }
-    localStorage.setItem(GEMINI_LIST_STORAGE, JSON.stringify(data.gemini_models));
-    GEMINI_MODELS_LIST = data.gemini_models;
-    // Re-populate whichever select is currently showing Gemini models.
-    syncBackendUI();
-    note.textContent = `Loaded ${data.gemini_models.length} models from your API key.`;
+    OPENROUTER_MODELS_LIST = data.models;
+    localStorage.setItem(OPENROUTER_LIST_STORAGE, JSON.stringify(data.models));
+    syncFormUI();
+    note.textContent = `Loaded ${data.models.length} vision-capable models from OpenRouter (${data.source || "live"}).`;
   } catch (e) {
-    note.textContent = "Failed to fetch models: " + e.message;
+    note.textContent = "Failed to fetch OpenRouter catalog: " + e.message;
   } finally {
     btn.disabled = false;
   }
 }
 
-async function loadObsidianStatus() {
-  try {
-    const res = await fetch("/api/obsidian");
-    if (!res.ok) return;
-    const data = await res.json();
-    renderObsidianSummary(data);
-  } catch (_) { /* ignore */ }
-}
-
-function renderObsidianSummary(data) {
-  const path = data.vault_path || "—";
-  document.getElementById("obsidian-path").textContent = path;
-  if (typeof data.persona_count === "number") {
-    const note = document.getElementById("obsidian-note");
-    note.textContent = `${data.persona_count} personas · ${data.dimension_count} dimensions · ` +
-      `${data.theme_count} themes · ${data.evaluation_count} evaluations`;
-    note.style.display = "";
-  } else if (typeof data.note_count === "number") {
-    const note = document.getElementById("obsidian-note");
-    note.textContent = `${data.note_count} notes in vault`;
-    note.style.display = "";
-  }
-}
-
-async function reExportObsidian() {
-  const btn = document.getElementById("obsidian-refresh");
-  const note = document.getElementById("obsidian-note");
-  btn.disabled = true;
-  note.textContent = "Re-exporting…";
-  note.style.display = "";
-  try {
-    const res = await fetch("/api/export-obsidian", { method: "POST" });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || res.statusText);
-    renderObsidianSummary(data);
-  } catch (e) {
-    note.textContent = "Export failed: " + e.message;
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function copyObsidianPath() {
-  const path = document.getElementById("obsidian-path").textContent;
-  try {
-    await navigator.clipboard.writeText(path);
-    const note = document.getElementById("obsidian-note");
-    note.textContent = "Path copied to clipboard.";
-    note.style.display = "";
-  } catch (_) { /* clipboard blocked — ignore */ }
-}
-
-function syncBackendUI() {
-  const backend = currentBackend();
-  const needsKey = isVideoBackend(backend);
-
-  document.getElementById("api-key-field").style.display = needsKey ? "" : "none";
-  document.getElementById("model-field").style.display = needsKey ? "" : "none";
-  document.getElementById("frame-step-field").style.display = needsKey ? "" : "none";
-  document.getElementById("max-frames-field").style.display = needsKey ? "" : "none";
-  if (!needsKey) document.getElementById("model-note").style.display = "none";
-
+function syncFormUI() {
   // Restore the saved frame-step (default 30 ≈ 1fps for 30fps source).
   document.getElementById("frame-step-input").value =
     localStorage.getItem(FRAME_STEP_STORAGE) || "30";
@@ -318,24 +182,13 @@ function syncBackendUI() {
   document.getElementById("max-frames-input").value =
     localStorage.getItem(MAX_FRAMES_STORAGE) || "48";
 
-  const apiKeyInput = document.getElementById("api-key-input");
-  const apiKeyLabel = document.getElementById("api-key-label");
-  const modelLabel = document.getElementById("model-label");
-  const modelSelect = document.getElementById("model-select");
-
-  if (backend === "openrouter") {
-    apiKeyLabel.textContent = "OpenRouter API key (saved in this browser only)";
-    apiKeyInput.placeholder = "sk-or-v1-…";
-    apiKeyInput.value = localStorage.getItem(OPENROUTER_KEY_STORAGE) || "";
-    modelLabel.textContent = "OpenRouter model";
-    populateModelSelect(modelSelect, OPENROUTER_MODELS_LIST, localStorage.getItem(OPENROUTER_MODEL_STORAGE));
-  } else if (backend === "gemini") {
-    apiKeyLabel.textContent = "Gemini API key (saved in this browser only)";
-    apiKeyInput.placeholder = "AIza…";
-    apiKeyInput.value = localStorage.getItem(GEMINI_KEY_STORAGE) || "";
-    modelLabel.textContent = "Gemini model";
-    populateModelSelect(modelSelect, GEMINI_MODELS_LIST, localStorage.getItem(GEMINI_MODEL_STORAGE));
-  }
+  document.getElementById("api-key-input").value =
+    localStorage.getItem(OPENROUTER_KEY_STORAGE) || "";
+  populateModelSelect(
+    document.getElementById("model-select"),
+    OPENROUTER_MODELS_LIST,
+    localStorage.getItem(OPENROUTER_MODEL_STORAGE),
+  );
 }
 
 // Live request feed state. Reset on each new run.
@@ -532,16 +385,15 @@ async function onSubmit(e) {
   const form = e.target;
   const btn = document.getElementById("run-btn");
   const status = document.getElementById("status");
-  const backend = currentBackend();
 
-  // Persist whatever the user typed under the right provider's slot.
+  // Persist whatever the user typed.
   const key = document.getElementById("api-key-input").value.trim();
   if (key) {
-    localStorage.setItem(backend === "openrouter" ? OPENROUTER_KEY_STORAGE : GEMINI_KEY_STORAGE, key);
+    localStorage.setItem(OPENROUTER_KEY_STORAGE, key);
   }
   const selectedModel = document.getElementById("model-select").value;
   if (selectedModel) {
-    localStorage.setItem(backend === "openrouter" ? OPENROUTER_MODEL_STORAGE : GEMINI_MODEL_STORAGE, selectedModel);
+    localStorage.setItem(OPENROUTER_MODEL_STORAGE, selectedModel);
   }
   const frameStep = document.getElementById("frame-step-input").value;
   if (frameStep) localStorage.setItem(FRAME_STEP_STORAGE, frameStep);
@@ -549,17 +401,10 @@ async function onSubmit(e) {
   if (maxFrames !== "") localStorage.setItem(MAX_FRAMES_STORAGE, maxFrames);
 
   btn.disabled = true;
-  const provLabel = backend === "openrouter" ? "OpenRouter" : (backend === "gemini" ? "Gemini" : "the mock backend");
-  status.textContent = `Extracting frames, then running 16 personas × 5 evaluations on ${provLabel}. This can take a couple of minutes…`;
+  status.textContent = "Extracting frames, then running 16 personas × 5 evaluations on OpenRouter. This can take a couple of minutes…";
   document.getElementById("model-note").style.display = "none";
 
   const fd = new FormData(form);
-  if (!isVideoBackend(backend)) {
-    fd.delete("api_key");
-    fd.delete("model");
-    fd.delete("frame_step");
-    fd.delete("max_frames");
-  }
 
   // Reset and show the live feed before kicking off the run.
   resetFeed();
@@ -590,7 +435,6 @@ async function onSubmit(e) {
           history.pushState({}, "", `/?id=${data.id}`);
           await loadHistory();
           await loadEvaluation(data.id);
-          if (doneEv.obsidian) renderObsidianSummary(doneEv.obsidian);
           resolve();
         },
         (errMsg) => {
@@ -611,15 +455,12 @@ function applyFallback(evaluation) {
   // the dropdown + localStorage to reflect what actually worked, and show a
   // small note describing the fallback path.
   if (!evaluation) return;
-  if (evaluation.backend !== "gemini" && evaluation.backend !== "openrouter") return;
-  // Only mirror the fallback into the UI if we're still on the same provider —
-  // otherwise the dropdown is showing a different model list.
-  if (currentBackend() !== evaluation.backend) return;
+  if (evaluation.backend !== "openrouter") return;
   const used = evaluation.model_used;
   const requested = evaluation.requested_model;
   const log = evaluation.fallback_log || [];
   const select = document.getElementById("model-select");
-  const modelStorage = evaluation.backend === "openrouter" ? OPENROUTER_MODEL_STORAGE : GEMINI_MODEL_STORAGE;
+  const modelStorage = OPENROUTER_MODEL_STORAGE;
   if (used && select && select.value !== used) {
     let opt = Array.from(select.options).find((o) => o.value === used);
     if (!opt) {

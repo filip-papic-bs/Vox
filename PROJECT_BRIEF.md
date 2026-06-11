@@ -1,4 +1,4 @@
-# Vox Machina — Project Brief
+# Vox — Project Brief
 
 ## What This Is
 

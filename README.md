@@ -1,4 +1,4 @@
-# Vox Machina
+# Vox
 
 A panel of AI players that watches a game and votes — each persona scores it through
 their own preferences, and the dashboard shows where they agree and where they split.
@@ -17,8 +17,8 @@ See `PROJECT_BRIEF.md` for the original spec.
 
 ```
 personas.json         16 personas with traits, preferences, dimension weights
-llm_backend.py        LLMBackend abstraction; MockBackend + GeminiBackend
-                      Each backend implements:
+llm_backend.py        LLMBackend abstraction; OpenRouterBackend
+                      The backend implements:
                         - extract_stats(video)  → stats dict
                         - evaluate(persona, stats, video, run) → feedback dict
 evaluator.py          Calls extract_stats once, then runs 5 evaluations per
@@ -27,7 +27,6 @@ evaluator.py          Calls extract_stats once, then runs 5 evaluations per
 server.py             Flask server: upload, persona list, evaluation results
 static/               Plain HTML + JS + CSS dashboard (no React, no build step)
 storage/              JSON evaluation results + uploaded videos (gitignored)
-smoke_test.py         Persona-scoring sanity test
 ```
 
 ## Dimensions (12)
@@ -63,46 +62,43 @@ pip install -r requirements.txt
 python server.py
 ```
 
-Open <http://127.0.0.1:5000>. Pick a backend:
-
-- **mock** — works without an API key. Uses deterministic stats presets
-  (cyberpunk / candy / fruit / egypt) keyed off the video filename so
-  different uploads produce different persona reactions. Good for demos,
-  CI, and dashboard work.
-- **gemini** — paste your Gemini API key into the field on the page (it
-  persists in browser `localStorage`, never written to disk on the server).
-  Gemini Flash watches the actual video and extracts the stats itself.
+Open <http://127.0.0.1:5000>. Evaluations run through **OpenRouter** — one
+API key, many vision-capable models (Google, Anthropic, OpenAI, Meta, …).
+Paste your OpenRouter key into the field on the page (it persists in browser
+`localStorage`, never written to disk on the server) and pick a model. The
+model watches the actual video and extracts the stats itself.
 
 There's no stats form — that's the whole point. Drop the video and go.
 
 ## API key
 
-You can provide the Gemini API key in any of these ways:
+You can provide the OpenRouter API key in either of these ways:
 
 1. **In the UI field** (recommended) — typed into the dashboard, persisted in
    browser localStorage only. The server never stores it, never logs it to disk.
    Lives on your machine.
-2. **Env var** — `export GEMINI_API_KEY=...` before starting the server.
-   Falls back to `GOOGLE_API_KEY` too.
+2. **Env var** — `export OPENROUTER_API_KEY=...` before starting the server.
 
 The form field overrides the env var if both are set.
 
 ## Configuration
 
-- `LLM_BACKEND` — default backend if none is selected in the form (`mock`)
-- `GEMINI_API_KEY` / `GOOGLE_API_KEY` — fallback Gemini key
-- `GEMINI_MODEL` — defaults to `gemini-2.5-flash`. Pin to a specific snapshot
-  in production so persona behavior doesn't drift between model updates.
-- `GEMINI_MAX_RETRIES` — retries on 503/429/502/504 (default 6). Free-tier
-  capacity flaps a lot; the backend automatically backs off and retries.
-- `GEMINI_INITIAL_BACKOFF` — seconds to wait before the first retry (default 2.0)
-- `GEMINI_MAX_BACKOFF` — backoff cap per retry (default 30.0)
+- `OPENROUTER_API_KEY` — fallback OpenRouter key
+- `OPENROUTER_MODEL` — default model when none is selected in the form
+  (defaults to `google/gemini-2.5-flash`). Pin to a specific snapshot in
+  production so persona behavior doesn't drift between model updates.
+- `OPENROUTER_MAX_RETRIES` — retries on 503/429/502/504 (default 6)
+- `OPENROUTER_INITIAL_BACKOFF` — seconds to wait before the first retry (default 2.0)
+- `OPENROUTER_MAX_BACKOFF` — backoff cap per retry (default 30.0)
+- `OPENROUTER_TIMEOUT` — per-request timeout in seconds (default 120)
+- `OPENROUTER_MAX_TOKENS` — output token cap per call (default 2000)
 - `PORT` — server port, default 5000
 
 ## How reproducibility works
 
-- `temperature = 0` on the real backend
-- Strict JSON schema output (`response_schema` on Gemini)
+- `temperature = 0` on the backend
+- Strict JSON output (`response_format: json_object`, with schema enforced in
+  the prompt and normalized on parse)
 - 5 runs per persona, median taken for headline numbers and dimension scores
 - Per-run variance surfaced in the detail view (`±N` next to each score)
 - Final rating is a **weighted sum** of dimension scores × persona weights —
@@ -125,12 +121,3 @@ We do the latter here for the plug-and-play UX. For production accuracy you'd
 ideally still pass structured stats (real win counts from the game backend)
 — `evaluate_all(backend, personas, video_path, stats=...)` already supports
 that path; the UI just doesn't expose it.
-
-## Smoke test
-
-```bash
-python smoke_test.py
-```
-
-Verifies 10 personas produce differentiated output (≥4-point rating spread)
-with bounded run-to-run variance.

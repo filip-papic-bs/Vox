@@ -26,31 +26,18 @@ from pathlib import Path
 from flask import Flask, Response, jsonify, request, send_from_directory
 
 from evaluator import evaluate_all, load_personas
-from llm_backend import GEMINI_MODELS, OPENROUTER_MODELS, get_backend
-from obsidian_export import export_from_storage
+from llm_backend import OPENROUTER_MODELS, get_backend
 
 
 BASE_DIR = Path(__file__).parent
 STORAGE_DIR = BASE_DIR / "storage"
 EVAL_DIR = STORAGE_DIR / "evaluations"
 VIDEO_DIR = STORAGE_DIR / "videos"
-OBSIDIAN_DIR = STORAGE_DIR / "obsidian"
 PERSONAS_PATH = BASE_DIR / "personas.json"
 STATIC_DIR = BASE_DIR / "static"
 
 EVAL_DIR.mkdir(parents=True, exist_ok=True)
 VIDEO_DIR.mkdir(parents=True, exist_ok=True)
-OBSIDIAN_DIR.mkdir(parents=True, exist_ok=True)
-
-
-def _refresh_obsidian_vault() -> dict | None:
-    """Rebuild the Obsidian vault from on-disk state. Never raises — vault
-    export failures must not break an evaluation upload."""
-    try:
-        return export_from_storage(OBSIDIAN_DIR, EVAL_DIR, PERSONAS_PATH)
-    except Exception as e:  # noqa: BLE001
-        print(f"[obsidian] export failed: {type(e).__name__}: {e}", flush=True)
-        return None
 
 
 # --------------------------------------------------------------------------- #
@@ -149,56 +136,11 @@ def api_personas():
 
 @app.get("/api/models")
 def api_models():
-    """Static default list. Falls back here when the user hasn't (or can't)
-    fetched the live list from their API key."""
+    """Static default list. Falls back here when the live OpenRouter catalog
+    fetch fails."""
     return jsonify({
-        "gemini_models": GEMINI_MODELS,
         "openrouter_models": OPENROUTER_MODELS,
     })
-
-
-# Skip these — they don't make sense for the persona-evaluation flow even if
-# the API key has access to them.
-_NON_PERSONA_HINTS = (
-    "tts", "embedding", "image", "robotics", "live",
-    "native-audio", "computer-use", "veo", "lyria",
-    "gemma", "imagen",
-)
-
-
-@app.post("/api/list-models")
-def api_list_models():
-    """Ask Gemini which models the supplied API key can actually call. The
-    hardcoded GEMINI_MODELS list goes stale fast; this lets the UI populate
-    from reality."""
-    api_key = (request.form.get("api_key") or request.values.get("api_key") or "").strip()
-    if not api_key:
-        return jsonify({"error": "api_key required"}), 400
-    try:
-        from google import genai  # type: ignore
-    except ImportError:
-        return jsonify({"error": "google-genai not installed"}), 500
-    try:
-        client = genai.Client(api_key=api_key)
-        names: list[str] = []
-        for m in client.models.list():
-            raw = getattr(m, "name", "") or ""
-            short = raw.split("/")[-1] if "/" in raw else raw
-            if not short.startswith("gemini-"):
-                continue
-            if any(h in short.lower() for h in _NON_PERSONA_HINTS):
-                continue
-            actions = getattr(m, "supported_actions", None) or []
-            # If the SDK exposes supported_actions, require generateContent.
-            # If it doesn't, fall back to the name filter above.
-            if actions and "generateContent" not in actions:
-                continue
-            names.append(short)
-        # Stable order, preferring our canonical-list order at the front
-        ranked = [m for m in GEMINI_MODELS if m in names] + sorted(set(names) - set(GEMINI_MODELS))
-        return jsonify({"gemini_models": ranked})
-    except Exception as e:  # noqa: BLE001
-        return jsonify({"error": f"{type(e).__name__}: {e}"}), 400
 
 
 # --------------------------------------------------------------------------- #
@@ -297,7 +239,7 @@ def api_evaluation(eval_id: str):
 
 @app.post("/api/upload")
 def api_upload():
-    """Multipart upload: 'video' (file) + optional 'backend' + optional 'api_key'.
+    """Multipart upload: 'video' (file) + 'api_key' + optional 'model'.
 
     Kicks off a background evaluation and returns immediately with the
     eval_id + the SSE stream URL the UI subscribes to for live progress.
@@ -312,7 +254,6 @@ def api_upload():
         file.save(video_path)
         video_filename = file.filename
 
-    backend_name = request.form.get("backend") or os.environ.get("LLM_BACKEND") or "mock"
     api_key = (request.form.get("api_key") or "").strip() or None
     model = (request.form.get("model") or "").strip() or None
 
@@ -327,15 +268,10 @@ def api_upload():
     except ValueError:
         max_frames = None
 
-    # Obsidian vault export is opt-in: only run it if the user explicitly
-    # checked the box. Browsers send checkbox values as the `value` attribute
-    # ("1" here) when checked, and omit the field entirely when unchecked.
-    export_obsidian = (request.form.get("export_obsidian") or "").strip().lower() in ("1", "true", "on", "yes")
-
     # Backend construction is sync — failures here (bad key, missing dep) must
     # surface synchronously so the UI doesn't open a stream to a dead job.
     try:
-        backend = get_backend(backend_name, api_key=api_key, model=model)
+        backend = get_backend("openrouter", api_key=api_key, model=model)
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 400
 
@@ -363,15 +299,12 @@ def api_upload():
             with open(out_path, "w", encoding="utf-8") as f:
                 json.dump(result, f, indent=2)
 
-            vault_summary = _refresh_obsidian_vault() if export_obsidian else None
             with job.lock:
                 job.status = "done"
             job.emit({
                 "type": "done",
                 "eval_id": eval_id,
                 "evaluation_url": f"/?id={eval_id}",
-                "obsidian": vault_summary,
-                "obsidian_exported": export_obsidian,
                 "elapsed_seconds": result.get("elapsed_seconds"),
             })
         except Exception as e:  # noqa: BLE001 — capture for the UI; don't crash the thread
@@ -445,26 +378,6 @@ def api_evaluation_progress(eval_id: str):
             "Connection": "keep-alive",
         },
     )
-
-
-@app.post("/api/export-obsidian")
-def api_export_obsidian():
-    """Force-rebuild the Obsidian vault from current storage. Returns the
-    absolute path so the UI can show 'open this folder as a vault'."""
-    summary = _refresh_obsidian_vault()
-    if summary is None:
-        return jsonify({"error": "export failed — see server log"}), 500
-    return jsonify(summary)
-
-
-@app.get("/api/obsidian")
-def api_obsidian_status():
-    """Where the vault lives + how many notes it currently contains."""
-    note_count = sum(1 for _ in OBSIDIAN_DIR.rglob("*.md"))
-    return jsonify({
-        "vault_path": str(OBSIDIAN_DIR.resolve()),
-        "note_count": note_count,
-    })
 
 
 if __name__ == "__main__":
