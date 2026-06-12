@@ -84,6 +84,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   loadHistory();
+  initAdmin();
   document.getElementById("upload-form").addEventListener("submit", onSubmit);
   document.getElementById("detail-close").addEventListener("click", closeDetail);
   document.getElementById("detail-backdrop").addEventListener("click", closeDetail);
@@ -169,6 +170,122 @@ async function refreshModelsFromApi() {
     note.textContent = `Loaded ${data.models.length} vision-capable models from OpenRouter (${data.source || "live"}).`;
   } catch (e) {
     note.textContent = "Failed to fetch OpenRouter catalog: " + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// --------------------------------------------------------------------------- //
+// Admin (prod, read-only): connect with a fresh 2FA, then fetch player data.
+// --------------------------------------------------------------------------- //
+
+const ADMIN_USER_STORAGE = "vox.adminUsername";
+const ADMIN_PASS_STORAGE = "vox.adminPassword";
+
+function initAdmin() {
+  // Restore + persist username/password in-browser (same as the API key).
+  const userInput = document.getElementById("admin-username-input");
+  const passInput = document.getElementById("admin-password-input");
+  userInput.value = localStorage.getItem(ADMIN_USER_STORAGE) || "";
+  passInput.value = localStorage.getItem(ADMIN_PASS_STORAGE) || "";
+  userInput.addEventListener("input", (e) => localStorage.setItem(ADMIN_USER_STORAGE, e.target.value));
+  passInput.addEventListener("input", (e) => localStorage.setItem(ADMIN_PASS_STORAGE, e.target.value));
+
+  document.getElementById("admin-connect-btn").addEventListener("click", adminConnect);
+  document.getElementById("admin-fetch-btn").addEventListener("click", adminFetchPlayer);
+  document.getElementById("admin-2fa-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") adminConnect();
+  });
+  refreshAdminStatus();
+}
+
+function renderAdminStatus(st) {
+  const statusEl = document.getElementById("admin-status");
+  const playerRow = document.getElementById("admin-player");
+  if (st && st.authenticated) {
+    const mins = st.expires_in_seconds ? Math.round(st.expires_in_seconds / 60) : null;
+    statusEl.textContent = `connected as ${st.username || "?"}${st.casino ? ` · ${st.casino}` : ""}` +
+      (mins !== null ? ` · session ~${mins} min left` : "");
+    statusEl.style.color = "var(--accent)";
+    playerRow.style.display = "";
+  } else {
+    statusEl.textContent = "not connected — enter a fresh 2FA code";
+    statusEl.style.color = "var(--muted)";
+    playerRow.style.display = "none";
+  }
+}
+
+async function refreshAdminStatus() {
+  try {
+    const res = await fetch("/api/admin/status");
+    renderAdminStatus(await res.json());
+  } catch (_) {
+    renderAdminStatus(null);
+  }
+}
+
+async function adminConnect() {
+  const input = document.getElementById("admin-2fa-input");
+  const btn = document.getElementById("admin-connect-btn");
+  const note = document.getElementById("admin-note");
+  const username = document.getElementById("admin-username-input").value.trim();
+  const password = document.getElementById("admin-password-input").value;
+  const code = input.value.trim();
+  if (!username) { document.getElementById("admin-username-input").focus(); return; }
+  if (!password) { document.getElementById("admin-password-input").focus(); return; }
+  if (!code) { input.focus(); return; }
+  btn.disabled = true;
+  note.style.display = "none";
+  document.getElementById("admin-status").textContent = "connecting…";
+  try {
+    const res = await fetch("/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password, code }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.statusText);
+    input.value = "";
+    renderAdminStatus(data);
+  } catch (e) {
+    note.textContent = "Login failed: " + e.message;
+    note.style.display = "";
+    renderAdminStatus(null);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function adminFetchPlayer() {
+  const nickname = document.getElementById("admin-nickname-input").value.trim();
+  const note = document.getElementById("admin-note");
+  const result = document.getElementById("admin-result");
+  const btn = document.getElementById("admin-fetch-btn");
+  if (!nickname) { document.getElementById("admin-nickname-input").focus(); return; }
+  const params = new URLSearchParams({ nickname });
+  const from = document.getElementById("admin-from-input").value.trim();
+  const to = document.getElementById("admin-to-input").value.trim();
+  if (from) params.set("date_from", from);
+  if (to) params.set("date_to", to);
+
+  btn.disabled = true;
+  note.textContent = "Fetching…";
+  note.style.display = "";
+  result.style.display = "none";
+  try {
+    const res = await fetch(`/api/admin/player?${params.toString()}`);
+    const data = await res.json();
+    if (!res.ok) {
+      if (data.need_login) refreshAdminStatus();
+      throw new Error(data.error || res.statusText);
+    }
+    const s = data.summary || {};
+    note.textContent = `${data.matched_users?.length || 0} match · ${data.game_count || 0} rounds · ` +
+      `${s.distinct_games || 0} games · bet €${s.total_bet_eur ?? "?"} · profit €${s.total_profit_eur ?? "?"}`;
+    result.textContent = JSON.stringify(data, null, 2);
+    result.style.display = "";
+  } catch (e) {
+    note.textContent = "Fetch failed: " + e.message;
   } finally {
     btn.disabled = false;
   }

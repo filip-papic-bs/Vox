@@ -20,11 +20,13 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from flask import Flask, Response, jsonify, request, send_from_directory
 
+from admin_client import AdminClient, AdminError
 from evaluator import evaluate_all, load_personas
 from llm_backend import OPENROUTER_MODELS, get_backend
 
@@ -38,6 +40,16 @@ STATIC_DIR = BASE_DIR / "static"
 
 EVAL_DIR.mkdir(parents=True, exist_ok=True)
 VIDEO_DIR.mkdir(parents=True, exist_ok=True)
+
+# Read-only PROD admin-API client (auth + player-data fetches). Single
+# process, so one shared instance holding the cached JWT is fine.
+admin = AdminClient()
+ADMIN_DATE_FMT = "%Y-%m-%d %H:%M"
+
+
+def _admin_default_range(days: int = 90) -> tuple[str, str]:
+    now = datetime.now(timezone.utc)
+    return (now - timedelta(days=days)).strftime(ADMIN_DATE_FMT), now.strftime(ADMIN_DATE_FMT)
 
 
 # --------------------------------------------------------------------------- #
@@ -378,6 +390,44 @@ def api_evaluation_progress(eval_id: str):
             "Connection": "keep-alive",
         },
     )
+
+
+# --------------------------------------------------------------------------- #
+# Admin API (PROD, read-only): login with a fresh 2FA, then pull player data.
+# --------------------------------------------------------------------------- #
+
+
+@app.get("/api/admin/status")
+def api_admin_status():
+    return jsonify(admin.status())
+
+
+@app.post("/api/admin/login")
+def api_admin_login():
+    payload = (request.get_json(silent=True) if request.is_json else None) or {}
+    username = (payload.get("username") or request.form.get("username") or "").strip()
+    password = payload.get("password") or request.form.get("password") or ""
+    code = (payload.get("code") or request.form.get("code") or "").strip()
+    try:
+        return jsonify(admin.login(username, password, code))
+    except AdminError as e:
+        return jsonify({"error": str(e), "need_login": e.need_login}), (e.status or 400)
+
+
+@app.get("/api/admin/player")
+def api_admin_player():
+    """Read-only sweep for one player: identity + per-round history + stats."""
+    nickname = (request.args.get("nickname") or "").strip()
+    if not nickname:
+        return jsonify({"error": "nickname required"}), 400
+    search_type = (request.args.get("type") or "NICKNAME").strip().upper()
+    default_from, default_to = _admin_default_range()
+    date_from = (request.args.get("date_from") or "").strip() or default_from
+    date_to = (request.args.get("date_to") or "").strip() or default_to
+    try:
+        return jsonify(admin.build_player_profile(nickname, date_from, date_to, search_type))
+    except AdminError as e:
+        return jsonify({"error": str(e), "need_login": e.need_login}), (e.status or 400)
 
 
 if __name__ == "__main__":

@@ -15,6 +15,34 @@
   </header>
 
   <main>
+    <section id="admin-section" class="card">
+      <h2>Player data <span class="hint-inline">(prod admin · read-only)</span></h2>
+      <p class="hint">
+        Pull a real player's game history + stats from prod, to build a persona around them.
+        Connect with your admin username, password, and a fresh 2FA code
+        <span class="hint-inline">(username + password saved in this browser only)</span>;
+        the session lasts until the token expires.
+      </p>
+
+      <div id="admin-login" class="admin-row">
+        <input type="text" id="admin-username-input" autocomplete="username" placeholder="admin username">
+        <input type="password" id="admin-password-input" autocomplete="current-password" placeholder="password">
+        <input type="text" id="admin-2fa-input" inputmode="numeric" autocomplete="off"
+               placeholder="6-digit 2FA code" maxlength="10">
+        <button type="button" id="admin-connect-btn" class="btn-secondary">Connect</button>
+        <span id="admin-status" class="hint-inline">checking…</span>
+      </div>
+
+      <div id="admin-player" class="admin-row" style="display:none">
+        <input type="text" id="admin-nickname-input" autocomplete="off" placeholder="player nickname">
+        <input type="text" id="admin-from-input" autocomplete="off" placeholder="from (YYYY-MM-DD HH:mm)">
+        <input type="text" id="admin-to-input" autocomplete="off" placeholder="to (YYYY-MM-DD HH:mm)">
+        <button type="button" id="admin-fetch-btn">Fetch player</button>
+      </div>
+      <div id="admin-note" class="hint" style="display:none"></div>
+      <pre id="admin-result" class="admin-result" style="display:none"></pre>
+    </section>
+
     <section id="upload-section" class="card">
       <h2>Run a new evaluation</h2>
       <p class="hint">Drop a game video. The model extracts stats from the video itself, then 16 personas score it across 12 dimensions.</p>
